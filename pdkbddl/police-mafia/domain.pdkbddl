@@ -1,0 +1,83 @@
+(define (domain police_mafia)
+
+  (:agents mafia_1 mafia_2 police_1 police_2)
+
+  (:types loc)
+
+  (:predicates
+      
+    ; since we cannot have a type hierarchy; e.g. loc of type object, band of type target.
+    {AK}(is_target ?l - loc)
+
+    ; since we cannot give types to agents; e.g. mafia1 of type mafia.
+    ; police and mafia know each other
+    {AK}(is_mafia ?a - agent)
+    {AK}(is_police ?a - agent)
+    {AK}(same_team ?a1 - agent ?a2 - agent)
+    {AK}(diff ?a1 - agent ?a2 - agent)
+
+    ; --------------------------      
+    {AK}(connected ?l1 - loc ?l2 - loc) ; all agents know the map
+
+    (injured ?a - agent)             
+    (at ?a - agent ?l - loc)    
+    (executed_heist)                      
+  )
+
+  ; shooting only the leg, not too harsh
+  (:action shoot_leg
+    :derive-condition (at $agent$ ?l)
+    :parameters (?a1 ?a2 - agent ?l - loc)
+    :precondition (and (!injured ?a1) (at ?a1 ?l) (at ?a2 ?l) (!same_team ?a1 ?a2))
+    :effect (and
+        (injured ?a2)
+    )
+  )
+
+  ; agents can see who came from/to what location
+  (:action move
+    :derive-condition (and (at $agent$ ?to) (at $agent$ ?from))
+    :parameters (?a - agent ?from ?to - loc)
+    :precondition (and (at ?a ?from) (!injured ?a) (connected ?from ?to))
+    :effect (and
+         (!at ?a ?from) 
+         (at ?a ?to)
+    )
+  )
+  
+  ; deceive consists of two moves, the first of which is fake
+  ; creates false beliefs in the agents at the start location
+  (:action deceive
+    :derive-condition never 
+    :parameters (?a - agent ?from ?interm ?to - loc)
+    :precondition (and (at ?a ?from) (!injured ?a)
+     (connected ?from ?interm) (connected ?interm ?to)
+     )
+    :effect (and
+         (!at ?a ?from) 
+         (at ?a ?to)
+         
+         (forall (?a1 - agent) (when (and (at ?a1 ?from) (diff ?a1 ?a)) [?a1] (!at ?a1 ?from) ))
+         (forall (?a1 - agent) (when (and (at ?a1 ?from) (diff ?a1 ?a)) [?a1] (at ?a1 ?interm) ))
+
+         (forall (?a1 - agent) (when (and (at ?a1 ?to) (diff ?a1 ?a)) [?a1] (!at ?a1 ?interm) ))
+         (forall (?a1 - agent) (when (and (at ?a1 ?to) (diff ?a1 ?a)) [?a1] (at ?a1 ?to) ))
+    )
+  )
+
+  ; at least one mafia has to reach the target loc to execute heist and escape
+  (:action execute_heist
+    :derive-condition always
+    :parameters (?m1 - agent ?l - loc)
+    :precondition (and 
+        (is_target ?l) 
+        (is_mafia ?m1) 
+        (at ?m1 ?l) 
+        (!injured ?m1) 
+    )
+    :effect (and
+        (executed_heist)
+        (!at ?m1 ?l)
+    )
+  )
+)

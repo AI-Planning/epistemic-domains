@@ -1,0 +1,108 @@
+{include:domain.pdkbddl}
+
+(define (problem mafia_heist)
+  (:domain police_mafia)
+  (:objects
+    hideout_1 hideout_2 - loc
+    police_safehouse - loc
+    hideout_3 hideout_4 hideout_5 - loc
+    bank - loc
+  )
+
+  (:projection )
+  (:task valid_generation)
+  (:depth 1)
+  (:init-type complete)
+
+  (:init
+    ; define types of locations
+    (is_target bank)
+
+    ; define the map (notic one-way and two-way connections)
+    (connected bank hideout_1)
+    (connected hideout_1 bank)
+    (connected bank hideout_2)
+    (connected hideout_2 bank)
+
+    (connected hideout_1 hideout_2)
+    (connected hideout_2 hideout_1)
+
+    ; agents (the police) can go out of police_safehouse but can't go in,
+    ; mafia can never pass police_safehouse
+    (connected police_safehouse hideout_1) 
+    (connected police_safehouse hideout_3) 
+    (connected police_safehouse hideout_4) 
+
+    (connected hideout_2 hideout_3)
+    (connected hideout_3 hideout_2)
+
+    (connected hideout_3 hideout_5)
+    (connected hideout_5 hideout_3)
+
+    (connected hideout_4 hideout_5)
+    (connected hideout_5 hideout_4)
+
+    ; define types of agents and their relations
+    (is_mafia mafia_1)
+    (is_mafia mafia_2)
+    (is_police police_1)
+    (is_police police_2)
+
+    (diff mafia_1 mafia_2)
+    (diff mafia_2 mafia_1)
+    (diff police_1 police_2)
+    (diff police_2 police_1)
+
+    (diff mafia_1 police_1)
+    (diff police_1 mafia_1)
+    (diff mafia_2 police_1)
+    (diff police_1 mafia_2)
+    (diff mafia_2 police_2)
+    (diff police_2 mafia_2)
+    (diff mafia_1 police_2)
+    (diff police_2 mafia_1)
+
+    (same_team mafia_1 mafia_2)
+    (same_team mafia_2 mafia_1)
+    (same_team police_1 police_2)
+    (same_team police_2 police_1)
+
+    ;(not sure if these are necessary)
+    (!same_team mafia_1 police_1)
+    (!same_team mafia_1 police_2)
+    (!same_team mafia_2 police_1)
+    (!same_team mafia_2 police_2)
+
+    (!same_team police_1 mafia_1)
+    (!same_team police_1 mafia_2)
+    (!same_team police_2 mafia_1)
+    (!same_team police_2 mafia_2)
+    ;;;;;;;;;;;;;;;;;
+    
+    ; initial locations of agents
+    (at mafia_1 hideout_5)
+    (at mafia_2 hideout_3)
+    (at police_1 hideout_4)
+    (at police_2 police_safehouse)
+
+    ; --------------------------
+    (!executed_heist)
+    (forall (?a - agent) (!injured ?a))
+
+    ; beliefs of agents about the world
+    ; police has some info (both right and wrong) while mafia don't
+    [police_1](at mafia_1 hideout_5)
+    [police_2](at mafia_1 hideout_5)
+    [police_1](at mafia_2 hideout_2)
+    [police_2](!at mafia_2 hideout_2)
+  )
+
+  (:goal
+    (and 
+      (executed_heist)
+      (injured mafia_1)
+      (injured police_2)
+      [police_2](at mafia_2 hideout_3)
+    )
+  )
+)
